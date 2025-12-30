@@ -292,7 +292,7 @@ xuangu.py (原脚本)
 
 - [QUICKSTART.md](QUICKSTART.md) - 快速开始
 - [OPTIMIZATION_README.md](OPTIMIZATION_README.md) - 优化说明
-- [README.md](README.md) - 原始文档
+- [README.md](../README.md) - 原始文档
 
 ## 🎓 学习路径
 

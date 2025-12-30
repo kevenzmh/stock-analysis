@@ -62,6 +62,12 @@ def parse_args():
         help='跳过股本变迁文件处理'
     )
     
+    parser.add_argument(
+        '--force-gbbq',
+        action='store_true',
+        help='强制更新股本变迁文件（忽略时间戳检查）'
+    )
+    
     return parser.parse_args()
 
 
@@ -94,14 +100,17 @@ def main():
         manager = FinancialDataManager(config)
         
         # 执行更新
-        stats = manager.update_all()
+        stats = manager.update_all(
+            skip_gbbq=args.skip_gbbq,
+            force_gbbq=args.force_gbbq
+        )
         
         # 检查是否有失败
         total_fail = stats['download_fail'] + stats['update_fail']
         if total_fail > 0:
             logger.warning(f"有 {total_fail} 个文件处理失败")
         
-        if not stats['gbbq_success'] and not args.skip_gbbq:
+        if not stats['gbbq_success'] and not stats.get('gbbq_skipped', False):
             logger.warning("股本变迁文件处理失败")
         
         logger.info("程序执行完成")

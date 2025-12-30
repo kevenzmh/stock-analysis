@@ -294,16 +294,48 @@ class FinancialDataManager:
         
         return export_count
     
-    def process_stock_changes(self) -> bool:
+    def process_stock_changes(self, force_update: bool = False) -> bool:
         """
         处理股本变迁文件
         
+        Args:
+            force_update: 是否强制更新，忽略文件时间检查
+            
         Returns:
             是否成功
         """
-        logger.info("处理股本变迁文件...")
+        logger.info("检查股本变迁文件...")
         
         try:
+            # 定义文件路径
+            gbbq_path = Path(self.config.paths.tdx_path) / 'T0002' / 'hq_cache' / 'gbbq'
+            output_path = Path(self.config.paths.csv_gbbq) / 'gbbq.csv'
+            
+            # 检查原始文件是否存在
+            if not gbbq_path.exists():
+                logger.warning(f"股本变迁原始文件不存在: {gbbq_path}")
+                return False
+            
+            # 检查是否需要更新
+            if not force_update and output_path.exists():
+                try:
+                    source_mtime = gbbq_path.stat().st_mtime
+                    output_mtime = output_path.stat().st_mtime
+                    
+                    if output_mtime >= source_mtime:
+                        logger.info("股本变迁文件已是最新，跳过处理")
+                        return True
+                    else:
+                        logger.info("检测到股本变迁文件有更新，开始处理...")
+                except OSError as e:
+                    logger.warning(f"无法获取文件时间戳: {e}，将重新处理")
+            else:
+                if force_update:
+                    logger.info("强制更新股本变迁文件...")
+                else:
+                    logger.info("股本变迁文件不存在，开始处理...")
+            
+            # 类别映射
             category_map = {
                 '1': '除权除息', '2': '送配股上市', '3': '非流通股上市', 
                 '4': '未知股本变动', '5': '股本变化', '6': '增发新股', 
@@ -313,8 +345,14 @@ class FinancialDataManager:
             }
             
             # 读取股本变迁文件
-            gbbq_path = Path(self.config.paths.tdx_path) / 'T0002' / 'hq_cache' / 'gbbq'
+            logger.info("读取股本变迁原始文件...")
             df_gbbq = pytdx.reader.gbbq_reader.GbbqReader().get_df(str(gbbq_path))
+            
+            if df_gbbq.empty:
+                logger.warning("股本变迁文件为空")
+                return False
+            
+            logger.info(f"读取到 {len(df_gbbq)} 条股本变迁记录")
             
             # 处理数据
             df_gbbq = df_gbbq.drop(columns=['market'])
@@ -325,27 +363,33 @@ class FinancialDataManager:
             df_gbbq['类别'] = df_gbbq['类别'].astype('object')
             df_gbbq['code'] = df_gbbq['code'].astype('object')
             
-            # 映射类别
-            for i in range(len(df_gbbq)):
-                category_code = str(df_gbbq.iloc[i]['类别'])
-                df_gbbq.iloc[i, df_gbbq.columns.get_loc('类别')] = \
-                    category_map.get(category_code, f'未知类别{category_code}')
+            # 映射类别（优化：使用向量化操作）
+            df_gbbq['类别'] = df_gbbq['类别'].astype(str).map(
+                lambda x: category_map.get(x, f'未知类别{x}')
+            )
+            
+            # 确保输出目录存在
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             
             # 保存文件
-            output_path = Path(self.config.paths.csv_gbbq) / 'gbbq.csv'
             df_gbbq.to_csv(output_path, encoding='gbk', index=False)
             
             logger.info(f"股本变迁文件处理完成: {output_path}")
+            logger.info(f"共处理 {len(df_gbbq)} 条记录")
             return True
             
         except Exception as e:
             logger.exception(f"股本变迁文件处理失败: {e}")
             return False
     
-    def update_all(self) -> dict:
+    def update_all(self, skip_gbbq: bool = False, force_gbbq: bool = False) -> dict:
         """
         执行完整更新流程
         
+        Args:
+            skip_gbbq: 是否跳过股本变迁文件处理
+            force_gbbq: 是否强制更新股本变迁文件
+            
         Returns:
             更新统计信息
         """
@@ -361,6 +405,7 @@ class FinancialDataManager:
             'update_fail': 0,
             'export_count': 0,
             'gbbq_success': False,
+            'gbbq_skipped': skip_gbbq,
         }
         
         try:
@@ -378,7 +423,11 @@ class FinancialDataManager:
             stats['export_count'] = self.export_missing_pkl()
             
             # 4. 处理股本变迁文件
-            stats['gbbq_success'] = self.process_stock_changes()
+            if skip_gbbq:
+                logger.info("跳过股本变迁文件处理")
+                stats['gbbq_success'] = True  # 跳过视为成功
+            else:
+                stats['gbbq_success'] = self.process_stock_changes(force_update=force_gbbq)
             
         except Exception as e:
             logger.exception(f"更新过程出错: {e}")
@@ -390,7 +439,12 @@ class FinancialDataManager:
         logger.info(f"下载成功: {stats['download_success']}, 失败: {stats['download_fail']}")
         logger.info(f"更新成功: {stats['update_success']}, 失败: {stats['update_fail']}")
         logger.info(f"导出PKL: {stats['export_count']}")
-        logger.info(f"股本变迁: {'成功' if stats['gbbq_success'] else '失败'}")
+        
+        if stats['gbbq_skipped']:
+            logger.info("股本变迁: 已跳过")
+        else:
+            logger.info(f"股本变迁: {'成功' if stats['gbbq_success'] else '失败'}")
+        
         logger.info(f"总耗时: {elapsed:.2f} 秒")
         logger.info("=" * 60)
         
