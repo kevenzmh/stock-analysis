@@ -18,6 +18,7 @@ import requests
 import datetime
 import hashlib
 import zipfile
+import zlib
 import pandas as pd
 import pytdx.reader.gbbq_reader
 

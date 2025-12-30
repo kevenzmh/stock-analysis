@@ -1,0 +1,25 @@
+{
+  "paths": {
+    "tdx_path": "D:/Program Files/Tdx MPV V1.23",
+    "csv_lday": "d:/TDXdata/lday_qfq",
+    "pickle": "d:/TDXdata/pickle",
+    "csv_index": "d:/TDXdata/index",
+    "csv_cw": "d:/TDXdata/cw",
+    "csv_gbbq": "d:/TDXdata"
+  },
+  "filters": {
+    "exclude_concepts": [
+      "ST板块"
+    ],
+    "exclude_industries": [
+      "T1002"
+    ],
+    "exclude_kcb": true
+  },
+  "debug": false,
+  "index_list": [
+    "sh999999.day",
+    "sh000300.day",
+    "sz399001.day"
+  ]
+}
