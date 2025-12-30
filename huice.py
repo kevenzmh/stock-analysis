@@ -13,18 +13,23 @@ from tqdm import tqdm
 from rich import print as rprint
 
 # 回测变量定义
-start_date = "2013-01-01"  # 回测起始日期
-end_date = "2022-12-31"  # 回测结束日期
+start_date = "2022-01-01"  # 回测起始日期
+end_date = "2025-12-30"  # 回测结束日期
 stock_money = 10000000  # 股票账户初始资金
 xiadan_percent = 0.1  # 设定买入总资产百分比的股票份额
 xiadan_target_value = 100000  # 设定具体股票买入持有总金额
 # 下单模式 买入总资产百分比的股票份额，或买入持有总金额的股票， 'order_percent' or 'order_target_value'
 order_type = 'order_target_value'
 
-rq_result_filename = "rq_result/" + time.strftime("%Y-%m-%d_%H%M%S", time.localtime()) + "+" + "start_date" + str(start_date)
+# 定义回测结果目录
+rq_result_dir = "D:\\Projects\\stock-analysis\\rq_result"
+os.mkdir(rq_result_dir) if not os.path.exists(rq_result_dir) else None
+
+# 定义回测结果文件名
+rq_result_filename = rq_result_dir + "\\" + time.strftime("%Y-%m-%d_%H%M%S", time.localtime()) + "+" + start_date
 rq_result_filename += "+" + order_type + "_" + (str(xiadan_percent) if order_type == 'order_percent' else str(xiadan_target_value))
 
-os.mkdir("rq_result") if not os.path.exists("rq_result") else None
+# 删除临时文件
 os.remove('temp.csv') if os.path.exists("temp.csv") else None
 
 
@@ -179,7 +184,7 @@ __config__ = {
         "start_date": start_date,
         "end_date": end_date,
         # 数据源所存储的文件路径
-        "data_bundle_path": "C:/Users/king/.rqalpha/bundle/",
+        "data_bundle_path": "C:\\Users\\Administrator\\.rqalpha\\bundle",
         "strategy_file": "huice.py",
         # 目前支持 `1d` (日线回测) 和 `1m` (分钟线回测)，如果要进行分钟线，请注意是否拥有对应的数据源，目前开源版本是不提供对应的数据源的。
         "frequency": "1d",
