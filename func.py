@@ -127,15 +127,24 @@ def get_TDX_blockfilecontent(filename):
     读取本机通达信板块文件，获取文件内容
     :rtype: object
     :param filename: 字符串类型。输入的文件名。
-    :return: DataFrame类型
+    :return: DataFrame类型，如果文件不存在则返回None
     """
     from pytdx.reader import block_reader, TdxFileNotFoundException
     if ucfg.tdx['tdx_path']:
         filepath = ucfg.tdx['tdx_path'] + os.sep + 'T0002' + os.sep + 'hq_cache' + os.sep + filename
-        df = block_reader.BlockReader().get_df(filepath)
+        if os.path.exists(filepath):
+            try:
+                df = block_reader.BlockReader().get_df(filepath)
+                return df
+            except Exception as e:
+                print(f"读取文件 {filename} 时出错: {e}")
+                return None
+        else:
+            print(f"未找到文件: {filepath}")
+            return None
     else:
         print("user_config文件的tdx_path变量未配置，或未找到" + filename + "文件")
-    return df
+        return None
 
 
 def get_lastest_stocklist():

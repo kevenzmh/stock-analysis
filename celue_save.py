@@ -165,9 +165,13 @@ if __name__ == '__main__':
     print(f'剔除通达信概念股票: {要剔除的通达信概念}')
     kicklist = []
     df = func.get_TDX_blockfilecontent("block_gn.dat")
-    # 获取df中blockname列的值是ST板块的行，对应code列的值，转换为list。用filter函数与stocklist过滤，得出不包括ST股票的对象，最后转为list
-    for i in 要剔除的通达信概念:
-        kicklist = kicklist + df.loc[df['blockname'] == i]['code'].tolist()
+    if df is not None:
+        # 获取df中blockname列的值是ST板块的行，对应code列的值，转换为list。用filter函数与stocklist过滤，得出不包括ST股票的对象，最后转为list
+        for i in 要剔除的通达信概念:
+            kicklist = kicklist + df.loc[df['blockname'] == i]['code'].tolist()
+        print(f"通过概念板块筛选，剔除了概念股票")
+    else:
+        print("⚠️ 未找到 block_gn.dat 文件，跳过概念股票筛选")
     print(f'剔除通达信行业股票: {要剔除的通达信行业}')
     df = pd.read_csv(ucfg.tdx['tdx_path'] + os.sep + 'T0002' + os.sep + 'hq_cache' + os.sep + "tdxhy.cfg",
                      sep='|', header=None, dtype='object')
