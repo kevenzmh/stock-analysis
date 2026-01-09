@@ -106,8 +106,13 @@ def run_celue2(stocklist, HS300_信号, df_gbbq, df_today, tqdm_position=None):
         df_stock.set_index('date', drop=False, inplace=True)  # 时间为索引。方便与另外复权的DF表对齐合并
         if '09:00:00' < time.strftime("%H:%M:%S", time.localtime()) < '16:00:00' \
                 and 0 <= time.localtime(time.time()).tm_wday <= 4:
-            df_today_code = df_today.loc[df_today['code'] == stockcode]
-            df_stock = func.update_stockquote(stockcode, df_stock, df_today_code)
+            # 检查df_today是否为空以及是否包含'code'列
+            if not df_today.empty and 'code' in df_today.columns:
+                df_today_code = df_today.loc[df_today['code'] == stockcode]
+                df_stock = func.update_stockquote(stockcode, df_stock, df_today_code)
+            else:
+                # df_today为空或没有'code'列，跳过实时行情更新
+                pass
             # 判断今天是否在该股的权息日内。如果是，需要重新前复权
             now_date = pd.to_datetime(time.strftime("%Y-%m-%d", time.localtime()))
             if now_date in df_gbbq.loc[df_gbbq['code'] == stockcode]['权息日'].to_list():

@@ -682,7 +682,29 @@ def get_tdx_lastestquote(stocklist=None):
     api = TdxHq_API(raise_exception=False)
     starttime_tick = time.time()
     print(f'请求 {len(stocklist_pytdx)} 只股票实时行情')
-    if api.connect(ucfg.tdx['pytdx_ip'], ucfg.tdx['pytdx_port']):
+    # 备用服务器列表
+    servers = [
+        (ucfg.tdx['pytdx_ip'], ucfg.tdx['pytdx_port']),
+        ('119.147.212.81', 7709),  # 东莞联通
+        ('119.147.212.82', 7709),  # 东莞电信
+        ('218.108.47.69', 7709),   # 北京联通
+        ('61.152.107.141', 7709),  # 上海电信
+    ]
+    connected = False
+    for server_ip, server_port in servers:
+        try:
+            print(f'尝试连接服务器: {server_ip}:{server_port}')
+            if api.connect(server_ip, server_port):
+                connected = True
+                print(f'成功连接到服务器: {server_ip}:{server_port}')
+                break
+        except Exception as e:
+            print(f'连接服务器 {server_ip}:{server_port} 失败: {e}')
+            continue
+    if not connected:
+        print('⚠️ 所有服务器连接失败，无法获取实时行情')
+        return df
+    if connected:
         # 第一轮获取股票行情，会有100只股票左右遗漏。pytdx代码问题
         if len(stocklist_pytdx) == 1:
             data = api.to_df(api.get_security_quotes(stocklist_pytdx))
@@ -759,20 +781,26 @@ def update_stockquote(code, df_history, df_today):
     # now_time = time.strftime("%H:%M:%S", time.localtime())
     # df_history[date]最后一格的日期小于今天
     if pd.to_datetime(df_history.at[df_history.index[-1], 'date']) < now_date:
-        df_today = df_today[(df_today['code'] == code)]
-        with pd.option_context('mode.chained_assignment', None):  # 临时屏蔽语句警告
-            df_today['date'] = now_date
-        df_today.set_index('date', drop=False, inplace=True)
-        df_today = df_today.rename(columns={'price': 'close'})
-        df_today = df_today[{'code', 'date', 'open', 'high', 'low', 'close', 'vol', 'amount'}]
-        result = pd.concat([df_history, df_today], axis=0, ignore_index=False)
-        result = result.fillna(method='ffill')  # 向下填充无效值
-        if '流通市值' and '换手率' in result.columns.tolist():
-            result['流通市值'] = result['流通股'] * result['close']
-            result = result.round({'流通市值': 2, })  # 指定列四舍五入
-        if '换手率' and '换手率' in result.columns.tolist():
-            result['换手率'] = result['vol'] / result['流通股'] * 100
-            result = result.round({'换手率': 2, })  # 指定列四舍五入
+        # 检查df_today是否为空以及是否包含'code'列
+        if not df_today.empty and 'code' in df_today.columns:
+            df_today = df_today[(df_today['code'] == code)]
+            with pd.option_context('mode.chained_assignment', None):  # 临时屏蔽语句警告
+                df_today['date'] = now_date
+            df_today.set_index('date', drop=False, inplace=True)
+            df_today = df_today.rename(columns={'price': 'close'})
+            df_today = df_today[{'code', 'date', 'open', 'high', 'low', 'close', 'vol', 'amount'}]
+            result = pd.concat([df_history, df_today], axis=0, ignore_index=False)
+            result = result.fillna(method='ffill')  # 向下填充无效值
+            if '流通市值' and '换手率' in result.columns.tolist():
+                result['流通市值'] = result['流通股'] * result['close']
+                result = result.round({'流通市值': 2, })  # 指定列四舍五入
+            if '换手率' and '换手率' in result.columns.tolist():
+                result['换手率'] = result['vol'] / result['流通股'] * 100
+                result = result.round({'换手率': 2, })  # 指定列四舍五入
+        else:
+            # df_today为空或没有'code'列，直接返回df_history
+            print(f'⚠️ 无法获取股票 {code} 的实时行情，返回历史数据')
+            result = df_history
 
     else:
         result = df_history
