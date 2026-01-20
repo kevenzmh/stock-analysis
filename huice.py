@@ -184,7 +184,7 @@ __config__ = {
         "start_date": start_date,
         "end_date": end_date,
         # 数据源所存储的文件路径
-        "data_bundle_path": "C:\\Users\\Administrator\\.rqalpha\\bundle",
+        "data_bundle_path": "C:\\Users\\zhaomh\\.rqalpha\\bundle",
         "strategy_file": "huice.py",
         # 目前支持 `1d` (日线回测) 和 `1m` (分钟线回测)，如果要进行分钟线，请注意是否拥有对应的数据源，目前开源版本是不提供对应的数据源的。
         "frequency": "1d",
@@ -245,10 +245,16 @@ result_dict = pd.read_pickle(rq_result_filename + ".pkl")
 
 # 给rq_result.pkl的交割单添加个股盈亏和收益率统计
 df_trades = result_dict['trades']
-df_temp = pd.read_csv('temp.csv', index_col=0, encoding='gbk').set_index('trading_datetime', drop=False)  # 个股卖出盈亏金额DF
-df_temp.index.name = 'datetime'  # 重置index的name
-df_temp = pd.merge(df_trades, df_temp, how='right')  # merge，以df_temp为准。相当于更新df_temp
-df_trades = pd.merge(df_trades, df_temp, how='left')  # merge，以df_trades为准。相当于更新df_trades
+if os.path.exists('temp.csv'):
+    df_temp = pd.read_csv('temp.csv', index_col=0, encoding='gbk')  # 个股卖出盈亏金额DF
+    # 重置索引以避免merge时的索引名冲突
+    df_temp = df_temp.reset_index()
+    # 检查df_trades是否有索引需要重置
+    if df_trades.index.name is not None:
+        df_trades = df_trades.reset_index(drop=True)
+    # 基于trading_datetime列进行merge
+    df_temp = pd.merge(df_trades, df_temp, on='trading_datetime', how='right')  # merge，以df_temp为准。相当于更新df_temp
+    df_trades = pd.merge(df_trades, df_temp, on='trading_datetime', how='left')  # merge，以df_trades为准。相当于更新df_trades
 result_dict['trades'] = df_trades
 with open(rq_result_filename+".pkl", 'wb') as fobj:
     pickle.dump(result_dict, fobj)

@@ -3,3 +3,5 @@ logs
 docs
 optimized/__pycache__/
 __pycache__/
+.vscode
+rq_result
