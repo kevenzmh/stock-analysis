@@ -22,7 +22,7 @@ xiadan_target_value = 100000  # 设定具体股票买入持有总金额
 order_type = 'order_target_value'
 
 # 定义回测结果目录
-rq_result_dir = "D:\\Projects\\stock-analysis\\rq_result"
+rq_result_dir = "D:\\PycharmProjects\\stock-analysis\\rq_result"
 os.mkdir(rq_result_dir) if not os.path.exists(rq_result_dir) else None
 
 # 定义回测结果文件名
